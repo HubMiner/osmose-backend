@@ -4,6 +4,8 @@ import os as _os
 import re as _re
 
 import unittest as _unittest
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 import lark as _lark
 from lark.lexer import Token as _Token
@@ -13,6 +15,12 @@ try:
 except:
     unicode = str
 
+def debug(*args):
+    import inspect, sys
+    callerframerecord = inspect.stack()[1]
+    frame = callerframerecord[0]
+    info = inspect.getframeinfo(frame)
+    print(info.filename, 'func=%s' % info.function, 'line=%s:' % info.lineno, args, file=sys.stderr, flush=True)
 
 def get_parser():
     """
@@ -373,21 +381,43 @@ def sanitize_field(field):
     """
     # The exceptions catching should be modified when the next version
     # 'lark-parser' will be released (it introduce a better exception handling).
+    debug('### 0 field = ', field)
     if not isinstance(field, str) and not isinstance(field, unicode):
+        debug('#####')
         raise TypeError("The field must be a string.")
     if _re.match("[0-9]{4} [0-9].+", field):
+        debug('#####')
         raise SanitizeError("This field can not be parsed properly.")
     if field.count('"') % 2 != 0:
+        debug('#####')
         raise InconsistentField("This field contains inconsistent quotes.")
+    debug('### success')
     try:
+        debug('### 1 field = ', field)
         field = field.replace('"""', '"').replace('""', '"')
+        debug('### 2 field = ', field)
         tree = PARSER.parse(field)
+        debug('#####')
+        print(tree.pretty())
+        '''
+        debug('#####')
+        print(tree.children)
+        debug('#####')
+        print(tree.data)
+        debug('#####')
+        print(tree.find_data(""))
+        debug('#####')
+        '''
         new_field = SanitizerTransformer().transform(tree)
+        debug('### new_field = ', new_field)
+        
     except _lark.exceptions.LarkError as e:
+        debug('### except')
         raise SanitizeError(
             "The field could not be parsed. It is probably invalid, "
             "or just too complex for the parser."
         )
+    debug('### return')
     return new_field
 
 
@@ -398,6 +428,18 @@ class TestSanitize(_unittest.TestCase):
     maxDiff = None
 
     def test_valid_fields(self):
+        testLine = "Jan 1,Apr 19,May 1 off"
+        # testLine = "Mo-Fr 08:30-16:00; Jan 1,Apr 19,May 1,Jun 24,Jul 5,Jul 24,Oct 12,Dec 24,Dec 25,Dec 31 off"
+        # All date rules except last one are changed.
+        testLine = "Mo-Fr 08:30-16:00; Jan 1 off; Apr 19 off; May 1 off; Jun 24 off" # fails
+        testLine = "Mo-Fr 08:30-16:00; Jan 1 off; Jun 24 off" # passes
+        testLine = "Mo-Fr 08:30-16:00; Jun 24 off" # passes
+        testLine = "Jan 1 off; Jun 24 off" # fails
+        
+        self.assertEqual(sanitize_field(testLine), testLine)
+        # self.assertEqual(sanitize_field("Mo-Fr 08:30-16:00; Jan 1,Apr 19,May 1,Jun 24,Jul 5,Jul 24,Oct 12,Dec 24,Dec 25,Dec 31, off "), "Mo-Fr 08:30-16:00; Jan 1,Apr 19,May 1,Jun 24,Jul 5,Jul 24,Oct 12,Dec 24,Dec 25,Dec 31, off")
+'''
+self.assertEqual(sanitize_field("24/7"), "24/7")
         self.assertEqual(sanitize_field("24/7"), "24/7")
         self.assertEqual(sanitize_field("24/7; Jan 1 off"), "24/7; Jan 1 off")
         self.assertEqual(sanitize_field("Mo 10:00"), "Mo 10:00")
@@ -575,6 +617,7 @@ class TestSanitize(_unittest.TestCase):
 
         with self.assertRaises(InconsistentField) as context:
             sanitize_field('on appointement"')
-    
+'''
+
 if __name__ == '__main__':
     _unittest.main()
