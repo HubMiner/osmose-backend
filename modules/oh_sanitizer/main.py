@@ -4,8 +4,8 @@ import os as _os
 import re as _re
 
 import unittest as _unittest
-import logging
-logging.basicConfig(level=logging.DEBUG)
+import logging, sys
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 import lark as _lark
 from lark.lexer import Token as _Token
@@ -29,7 +29,9 @@ def get_parser():
     base_dir = _os.path.dirname(_os.path.realpath(__file__))
     with open(_os.path.join(base_dir, "field.ebnf"), 'rb') as f:
         grammar = f.read().decode("UTF-8")
-    return _lark.Lark(grammar, start="time_domain", parser="earley")
+        
+        
+    return _lark.Lark(grammar, start="time_domain", parser="earley", debug="True")
 
 
 # TODO: Fix 'Mo,SH'
@@ -54,6 +56,7 @@ class InconsistentField(SanitizeError):
 
 
 class SanitizerTransformer(_lark.Transformer):
+
     def _call_userfunc(self, tree, new_children=None):
         # Comes from "lark/visitors.py", to avoid raising of a "VisitError".
         children = new_children if new_children is not None else tree.children
@@ -399,15 +402,7 @@ def sanitize_field(field):
         tree = PARSER.parse(field)
         debug('#####')
         print(tree.pretty())
-        '''
-        debug('#####')
-        print(tree.children)
-        debug('#####')
-        print(tree.data)
-        debug('#####')
-        print(tree.find_data(""))
-        debug('#####')
-        '''
+        
         new_field = SanitizerTransformer().transform(tree)
         debug('### new_field = ', new_field)
         

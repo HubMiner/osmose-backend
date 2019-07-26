@@ -166,10 +166,11 @@ monthday_date.10 : monthday_date_day
 
 // Boost the priority so the day range of "Apr 10-15 off" is not mistaken for
 // a bad form of timespan and converted to "Apr 10:00-15:00 off".
-monthday_date_day.20 : [year " "] MONTH " " INT -> monthday_date_monthday
-                    | [year " "] MONTH " " INT "-" INT -> monthday_date_day_to_day
 
-//
+MONTH_DATE.25 : / MONTH " " INT /
+
+monthday_date_day.20 : [year " "] MONTH_DATE -> monthday_date_monthday
+                  | [year " "] MONTH_DATE "-" INT -> monthday_date_day_to_day
 
 week_selector : WEEK week ("," week)*  // TODO
 week : weeknum
